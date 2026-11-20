@@ -1,0 +1,6 @@
+target/
+/.superpowers
+crates/kide-web/pkg/
+__pycache__/
+/.claude/
+crates/kide-web/webdriver.json

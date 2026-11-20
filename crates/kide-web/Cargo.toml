@@ -1,0 +1,39 @@
+[package]
+name = "kide-web"
+version = "0.2.0"
+edition = "2024"
+rust-version = "1.89"
+license = "MIT OR Apache-2.0"
+description = "Kide in the browser: live sessions over WebTransport"
+repository = "https://github.com/k0sti/kide"
+keywords = ["sync", "webtransport", "opfs", "wasm"]
+categories = ["wasm", "web-programming"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+# Browser only: on other targets the crate is empty.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+kide = { path = "../kide", default-features = false }
+# Pinned to the flake's wasm-bindgen-cli, which must match it exactly.
+wasm-bindgen = "=0.2.129"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+kide = { path = "../kide", default-features = false, features = ["conformance"] }
+wasm-bindgen-test = "0.3"
+
+# Native test support is built explicitly by test.sh, never for the browser.
+[features]
+test-server = []
+
+[[example]]
+name = "browser_peer"
+path = "tests/support/browser_peer.rs"
+required-features = ["test-server"]
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+kide = { path = "../kide", default-features = false, features = ["quic", "conformance"] }
+# Moved with the test server from the core crate; same existing QUIC dependency.
+wtransport = "0.7.2"

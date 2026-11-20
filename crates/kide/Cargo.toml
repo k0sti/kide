@@ -1,0 +1,56 @@
+[package]
+name = "kide"
+version = "0.2.0"
+edition = "2024"
+rust-version = "1.89"
+license = "MIT OR Apache-2.0"
+description = "Content-defined hash trees for folders, synchronised between your own devices"
+repository = "https://github.com/k0sti/kide"
+readme = "README.md"
+keywords = ["sync", "hash-tree", "content-defined", "replication", "nostr"]
+categories = ["filesystem", "network-programming", "data-structures"]
+# The crate holds the library, the spec and its reference; not the CI script.
+exclude = ["ci.sh"]
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+default = ["watch"]
+# FIPS addresses (§4.2); the `kide` program (kide-cli) turns it on.
+fips = []
+# Noticing folder changes as they happen (§5.8), on Linux, macOS and
+# Windows, through notify.
+watch = ["dep:notify"]
+# QUIC and WebTransport (§4.2) through wtransport, on a tokio runtime kept
+# inside the transport.
+quic = ["dep:wtransport", "dep:tokio"]
+# HTTPS/WebSocket over TCP 443; authenticated live control and reverse pulls.
+https = ["dep:tokio", "dep:tokio-rustls", "dep:tokio-tungstenite", "dep:futures-util"]
+# Exposes kide::conformance to integration tests and other implementations.
+conformance = []
+
+[dependencies]
+sha2 = "0.11.1"
+unicode-case-mapping = "1.0.0"
+unicode-normalization = "0.1.26"
+tokio = { version = "1.48.0", optional = true, features = ["rt-multi-thread", "sync", "time", "net", "io-util", "macros"] }
+wtransport = { version = "0.7.2", optional = true }
+k256 = { version = "0.14.0", default-features = false, features = ["schnorr", "std"] }
+# Challenges (§4.2) from the system's random source on every platform.
+getrandom = "0.4.3"
+
+tokio-rustls = { version = "0.26", optional = true, default-features = false, features = ["ring", "tls12"] }
+tokio-tungstenite = { version = "0.28", optional = true, default-features = false, features = ["handshake"] }
+futures-util = { version = "0.3", optional = true, default-features = false, features = ["sink", "std"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+notify = { version = "8.2.0", optional = true }
+
+# k256 reaches getrandom (through crypto-bigint), which in the browser needs
+# its JavaScript backend.
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+getrandom = { version = "0.4.3", features = ["wasm_js"] }
+
+[dev-dependencies]
+kide = { path = ".", features = ["conformance", "fips", "quic", "https"] }

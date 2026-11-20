@@ -1,0 +1,28 @@
+[package]
+name = "kide-cli"
+version = "0.2.0"
+edition = "2024"
+rust-version = "1.89"
+license = "MIT OR Apache-2.0"
+description = "The kide program: a folder kept equal between your own devices"
+repository = "https://github.com/k0sti/kide"
+readme = "../kide/README.md"
+keywords = ["sync", "hash-tree", "cli"]
+categories = ["command-line-utilities", "filesystem"]
+
+[[bin]]
+name = "kide"
+path = "src/main.rs"
+
+[features]
+default = ["fips", "watch"]
+# Experimental FIPS transport (§4.2).
+fips = ["kide/fips"]
+# Scanning as soon as the folder changes (§5.8).
+watch = ["kide/watch"]
+
+[dependencies]
+kide = { path = "../kide", default-features = false, features = ["quic"] }
+
+[dev-dependencies]
+kide = { path = "../kide", default-features = false, features = ["conformance"] }

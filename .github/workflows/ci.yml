@@ -1,0 +1,51 @@
+name: ci
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      full:
+        description: Run the full Linux suite (Nix, browser and heavy tests)
+        type: boolean
+        default: false
+      platforms:
+        description: Also check macOS and Windows
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  light:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install stable --profile minimal --component clippy,rustfmt
+      - run: cargo +stable test --locked -p kide -p kide-cli
+      - run: cargo +stable clippy --locked -p kide -p kide-cli --all-targets --all-features -- -D warnings
+      - run: cargo +stable fmt --all --check
+
+  platforms:
+    if: github.event_name == 'workflow_dispatch' && inputs.platforms
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install stable --profile minimal --component clippy
+      - run: cargo +stable test --locked -p kide -p kide-cli
+      - run: cargo +stable clippy --locked -p kide -p kide-cli --all-targets --all-features -- -D warnings
+
+  full:
+    if: github.event_name == 'workflow_dispatch' && inputs.full
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - run: nix develop --command ./crates/kide/ci.sh
