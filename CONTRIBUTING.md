@@ -30,7 +30,64 @@ Tests stay small and fast: anything over a second goes behind `KIDE_FULL=1`. Tes
 
 ## Commits
 
+All active work happens in the public `k0sti/kide` repository; the private
+historical archive is read-only and must not be an active push remote. Develop on
+public `dev` or a task branch and submit changes for review. `main` is the public
+release line: squash-merges are deliberate and require Kosti's explicit OK for
+the reviewed changes. Passing checks does not authorize a merge. Push work to its
+development branch rather than directly to `main`; never force-push or attach
+private development history to a public branch.
+
+Design documents and plans live in Kota at `shared/kota-development/Kide/`, not
+in this repository. The implemented specification and user documentation remain
+with the code.
+
 One change per commit, with a conventional message (`feat: …`, `fix: …`, `docs: …`). Before committing: `cargo test -p kide -p kide-cli` passes, `cargo clippy -p kide -p kide-cli --all-targets --all-features -- -D warnings` is clean, `cargo fmt` is applied. CI runs the same checks on every pull request.
+
+## Audit before publishing
+
+Development branches are public. Every push must pass the bounded audit in
+`scripts/public_audit.py`. It checks the full resulting tree, all outgoing commit
+trees and metadata, and annotated tag metadata, including files deleted in a
+later outgoing commit. It rejects unrelated history, shallow repositories,
+credentials and unnecessary files, and applies private-data patterns from local
+policy. It never prints matching content. This is a bounded pattern check, not
+a proof that arbitrary secrets cannot be present; review the diff as well.
+
+Configure `kide.auditPolicy` to the absolute path of a private JSON policy outside
+tracked files. Its `public_base` is the full ID of an already-audited public
+commit; all published work must descend from it. Its nonempty `patterns` object
+maps neutral check names to regular expressions for private project names,
+abbreviations, local paths and hosts. Keep those patterns private, including
+when writing tests. A missing policy blocks publication. Only advance the audited
+base after reviewing a public release; never use a private-history commit.
+
+Git does not install hooks on clone. In each checkout, configure the local policy
+and install the tracked hook in the common Git directory so all worktrees use it.
+Preserve any existing hooks when installing:
+
+```sh
+git config --local kide.auditPolicy /absolute/path/to/private-policy.json
+hook_dir="$(git rev-parse --path-format=absolute --git-common-dir)/hooks"
+install -m 755 .githooks/pre-push "$hook_dir/pre-push"
+git config --local core.hooksPath "$hook_dir"
+```
+
+The audit requires Python 3 and permits only the public Kide push destination.
+Its bounds are 20 seconds, 300 commits, 3,000 distinct file entries, 4 MiB per
+object and 64 MiB of unique blob bytes. A finding, unsupported entry or exhausted
+bound blocks the push; do not bypass the hook. Review and adjust the audit
+deliberately if legitimate repository growth exceeds these bounds.
+
+After Kosti approves a squash-merge, inspect the final diff, run the applicable
+checks, create the squash commit on the public main history, and audit it again:
+
+```sh
+python3 -I scripts/public_audit.py --check HEAD
+```
+
+The pre-push hook also runs on that push. Run the audit's regression tests with
+`python3 -I scripts/test_public_audit.py` when changing the publication checks.
 
 ## Licensing and sign-off
 

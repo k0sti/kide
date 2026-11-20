@@ -107,7 +107,7 @@ cd crates/kide && ./ci.sh
 
 ## Contributing and security
 
-See [DESIGN.md](DESIGN.md) for the design choices. See [CONTRIBUTING.md](CONTRIBUTING.md) for the rules the code follows and the sign-off on commits. To report a vulnerability, see [SECURITY.md](SECURITY.md).
+See [the specification](crates/kide/SPEC.md) for the implemented format and protocol. See [CONTRIBUTING.md](CONTRIBUTING.md) for the rules the code follows and the sign-off on commits. To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
 ## License
 
