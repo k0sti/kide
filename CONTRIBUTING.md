@@ -86,6 +86,12 @@ checks, create the squash commit on the public main history, and audit it again:
 python3 -I scripts/public_audit.py --check HEAD
 ```
 
+The merge review also removes unnecessary or incorrect material: scratch files,
+dead/experimental code, debug leftovers, stale comments/docs and duplicated
+explanations. After the squash commit is verified on remote main, delete the
+merged local/remote development branch and start fresh from fetched main,
+preserving any concurrent unmerged work. Do not force-push a branch reset.
+
 The pre-push hook also runs on that push. Run the audit's regression tests with
 `python3 -I scripts/test_public_audit.py` when changing the publication checks.
 
