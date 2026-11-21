@@ -198,8 +198,14 @@ impl Link {
     /// The Kide root of `base`, or of an empty folder without one.
     pub fn base_root(&self, folder: &Folder, base: Option<&str>) -> Result<Hash> {
         let Some(base) = base else {
+            // An empty manifest is the empty content every folder holds from
+            // `init` on; storing it only if missing keeps a read-only folder usable.
             let store = folder.store.clone();
-            return Ok(build_manifest(&[], &mut |id, b| store.put_known(id, b))?.id);
+            let empty = build_manifest(&[], &mut |_, _| Ok(()))?.id;
+            if !store.has(&empty)? {
+                build_manifest(&[], &mut |id, b| store.put_known(id, b))?;
+            }
+            return Ok(empty);
         };
         self.root_of(base)?.ok_or_else(|| {
             Error::Refused(format!(

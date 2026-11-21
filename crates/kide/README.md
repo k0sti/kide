@@ -22,8 +22,13 @@ Every command works in the folder given by `-C <dir>`, or the current directory.
 | `kide reset [device]` | Takes a device's state: every path gets its version, local changes go (files to the trash) |
 | `kide join [device]` | For a folder whose `.kide` is new but which holds files (a reinstalled device): where they differ, the device's version wins and the local one is kept as a conflict copy, unless the device's history already has it |
 | `kide run` | The daemon: serves the folder, scans as soon as a file changes (with the default feature `watch`) and every `scan_interval`, pulls from a device as soon as it announces a new root and every `pull_interval`, and collects garbage once a day |
+| `kide git link <url> <branch> <author>` | Links the folder to a branch of a Git repository (needs the `git` program; author is `Name <email>`). An empty folder takes the branch's files; a folder with files needs an empty or new branch |
+| `kide git status` | What changed since the last commit both sides agree on, live conflict copies, and empty directories (Git cannot hold them); works while `kide run` holds the folder |
+| `kide git commit <message>` | Scans, then commits those changes on top of that commit; refused while a conflict copy is live |
+| `kide git push` | Pushes the commit, without force; refused if the branch moved (pull first) |
+| `kide git pull` | Fetches the branch and takes its changes in; a path changed on both sides is decided as between devices |
 
-Commands that change the folder take the lock in `.kide/lock`; while `kide run` holds it, `scan`, `pull`, `restore`, `reset`, `join` and `gc` are refused. `ls`, `verify` (without `--repair`) and `checkout` need no lock.
+Commands that change the folder take the lock in `.kide/lock`; while `kide run` holds it, `scan`, `pull`, `restore`, `reset`, `join`, `gc` and `git link`, `git commit` and `git pull` are refused. `ls`, `verify` (without `--repair`) and `checkout` need no lock.
 
 `kide run` runs until it is killed. A kill is safe at any moment: objects of an unfinished pull stay in `.kide/staging/` for the next one, and `HEAD` is written only after everything it needs is stored. An unreachable device is retried after `pull_interval`, then after twice that, up to 5 minutes, until it answers. A device that sends a corrupt object is reported on standard error, nothing from that pull is applied, and it is retried with the same back-off. Garbage is collected once a day between pulls, as `kide gc` does on demand when no daemon runs.
 

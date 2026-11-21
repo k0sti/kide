@@ -23,6 +23,7 @@ watch = ["kide/watch"]
 
 [dependencies]
 kide = { path = "../kide", default-features = false, features = ["quic"] }
+kide-git = { path = "../kide-git" }
 
 [dev-dependencies]
 kide = { path = "../kide", default-features = false, features = ["conformance"] }

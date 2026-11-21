@@ -689,6 +689,7 @@ name = "kide-cli"
 version = "0.2.0"
 dependencies = [
  "kide",
+ "kide-git",
 ]
 
 [[package]]

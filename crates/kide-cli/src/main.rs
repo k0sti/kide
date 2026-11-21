@@ -1,8 +1,9 @@
 //! The `kide` command-line program: the local folder commands, `gc`,
-//! `serve`, `pull` and the daemon `run`.
+//! `serve`, `pull`, the daemon `run`, and `git`.
 
 mod args;
 mod cmds;
+mod gitcmd;
 
 use args::{Args, Fail, Out, usage};
 use std::process::ExitCode;
@@ -32,6 +33,18 @@ commands, in the folder given by -C (default: the current directory):
                               they differ its version wins, the local one is a copy
   run                         the daemon: serve, scan and pull on the configured
                               intervals until killed (a kill is safe at any moment)
+
+the folder linked to a Git branch (needs the git program; link, commit and pull
+take the folder's lock, so stop `kide run` while using them):
+  git link <url> <branch> <author>  link this folder; author is 'Name <email>'.
+                              An empty folder takes the branch's files; a folder
+                              with files needs an empty or new branch
+  git status                  changes since the last agreed commit, conflict
+                              copies and empty directories (which Git cannot hold)
+  git commit <message>        scan, then commit those changes
+  git push                    push the commit, without force
+  git pull                    fetch the branch and take its changes in; a path
+                              changed on both sides is decided as between devices
 
 QUIC with device keys and pinned TLS certificates is the default. Plain TCP is
 for local testing only. FIPS is experimental until tested between two machines.
@@ -73,6 +86,7 @@ fn run(a: &Args) -> Out<()> {
         "join" => cmds::join(a),
         "gc" => cmds::gc(a),
         "run" => cmds::run(a),
+        "git" => gitcmd::run(a),
         other => usage(format!("unknown command {other:?}")),
     }
 }

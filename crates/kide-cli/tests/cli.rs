@@ -1,5 +1,5 @@
 //! The commands of the `kide` binary: init, scan, ls, log, verify, checkout,
-//! gc, serve, pull and run.
+//! gc, serve, pull, run and git.
 //! Unix only: the fixtures use symbolic links and permission bits.
 #![cfg(unix)]
 
@@ -535,4 +535,62 @@ fn explicit_move_and_forward_tree_restore() {
         b"earlier\n"
     );
     assert!(!tmp.path().join("new/sub/a.txt").exists());
+}
+
+/// Plain git with a fixed identity and no user configuration.
+fn plain_git(dir: &Path, args: &[&str]) -> String {
+    let out = Command::new("git")
+        .current_dir(dir)
+        .env("GIT_CONFIG_NOSYSTEM", "1")
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .args(["-c", "user.name=Up", "-c", "user.email=up@example.com"])
+        .args([
+            "-c",
+            "init.defaultBranch=main",
+            "-c",
+            "commit.gpgsign=false",
+        ])
+        .args(args)
+        .output()
+        .unwrap();
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(out.status.success(), "git {args:?}: {err}");
+    String::from_utf8(out.stdout)
+        .unwrap()
+        .trim_end()
+        .to_string()
+}
+
+#[test]
+fn git_link_commit_push_and_pull() {
+    let tmp = TempDir::new("cli-git");
+    let (remote, clone, dir) = (tmp.subdir(), tmp.subdir(), tmp.subdir());
+    plain_git(&remote, &["init", "-q", "--bare"]);
+    let (url, d) = (remote.to_str().unwrap(), dir.to_str().unwrap());
+    ok(&["init", d]);
+    write(&dir, "a.txt", b"one\n");
+    ok(&["-C", d, "scan"]);
+    assert_eq!(
+        kide(&["-C", d, "git", "link", url, "main"]).status.code(),
+        Some(2),
+        "link needs an author"
+    );
+    ok(&["-C", d, "git", "link", url, "main", "Ada <ada@example.com>"]);
+    assert!(ok(&["-C", d, "git", "status"]).contains("\nA a.txt\n"));
+    let id = field(&ok(&["-C", d, "git", "commit", "First"]), "commit");
+    assert_eq!(field(&ok(&["-C", d, "git", "push"]), "pushed"), id);
+    let again = ok(&["-C", d, "git", "commit", "Again"]);
+    assert_eq!(again.trim(), "nothing to commit");
+
+    plain_git(&clone, &["clone", "-q", url, "."]);
+    fs::write(clone.join("b.txt"), "from git\n").unwrap();
+    plain_git(&clone, &["add", "b.txt"]);
+    plain_git(&clone, &["commit", "-q", "-m", "Add b"]);
+    plain_git(&clone, &["push", "-q", "origin", "main"]);
+    let up = plain_git(&clone, &["rev-parse", "HEAD"]);
+    let pulled = ok(&["-C", d, "git", "pull"]);
+    assert!(pulled.starts_with(&format!("pulled {up} ")), "{pulled}");
+    assert_eq!(fs::read(dir.join("b.txt")).unwrap(), b"from git\n");
+    let again = ok(&["-C", d, "git", "pull"]);
+    assert_eq!(again.lines().next(), Some("up to date"));
 }
