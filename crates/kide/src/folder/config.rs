@@ -84,6 +84,7 @@ pub const TEMPLATE: &str = "# Kide folder configuration (SPEC.md section 5.8)
 # folder        = <dir>     # the directory synchronised, if not this one
 # mode          = sync      # or send: never pull, never write into the folder
 # ignore        = <pattern> # neither scanned nor written here, repeatable: e.g. .obsidian
+ignore        = .git        # a Git repository breaks when two devices write it
 # sync          = <pattern> # synced although an earlier ignore covers it: e.g. .obsidian/*.json
 # transport     = quic      # or fips (experimental), plain (local tests only)
 # self          = npub1... [::1]:7840 # this device; address for quic/plain
@@ -264,8 +265,12 @@ mod tests {
     }
 
     #[test]
-    fn template_parses_to_defaults() {
-        assert_eq!(Config::parse(TEMPLATE).unwrap(), Config::default());
+    fn template_ignores_git_repositories_and_is_otherwise_default() {
+        let c = Config::parse(TEMPLATE).unwrap();
+        assert!(c.ignores(".git") && c.ignores(".git/HEAD"));
+        assert!(!c.ignores("notes.md") && !c.ignores(".gitignore"));
+        let without = Config::parse(&TEMPLATE.replace("ignore        = .git", "")).unwrap();
+        assert_eq!(without, Config::default());
         assert_eq!(Config::parse("").unwrap(), Config::default());
     }
 

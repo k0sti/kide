@@ -8,7 +8,7 @@ Every command works in the folder given by `-C <dir>`, or the current directory.
 
 | Command | What it does |
 |---|---|
-| `kide init [dir]` | Makes a Kide folder: creates `.kide/` with a configuration template |
+| `kide init [dir]` | Makes a Kide folder: creates `.kide/` with a configuration template that ignores `.git` |
 | `kide scan` | Records local changes and prints the new `HEAD` |
 | `kide ls [--live]` | Lists the files of `HEAD`, deleted ones too unless `--live` |
 | `kide log <path>` | Shows a path's version history in `HEAD`, newest first: one line per version with its lanes (`*` the version, `\|` a lane passing by, `/` a lane joining it), the first 12 hex digits of its id, how it came about (`new`, `edit`, `copy`, `merge`, `delete`), its size, and a merge's parents |

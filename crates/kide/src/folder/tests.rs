@@ -13,7 +13,8 @@ fn init_then_open() {
         assert!(kide.join(p).exists(), "{p}");
     }
     let f = Folder::open(tmp.path()).unwrap();
-    assert_eq!(f.config, Config::default());
+    assert_eq!(f.config, Config::parse(config::TEMPLATE).unwrap());
+    assert!(f.config.ignores(".git"));
     assert!(f.index.0.is_empty());
     assert!(
         read_manifest(&*f.store, &f.head).unwrap().is_empty(),
