@@ -692,6 +692,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "kide-git"
+version = "0.2.0"
+dependencies = [
+ "kide",
+]
+
+[[package]]
 name = "kide-web"
 version = "0.2.0"
 dependencies = [

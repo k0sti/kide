@@ -8,7 +8,7 @@ Kide is pre-release and changes fast; open an issue before a large change so it 
 nix develop          # the pinned toolchain (Rust with wasm32, wasm-bindgen-cli, Chromium for browser tests)
 cd crates/kide
 cargo test <filter>  # while working: the tests you touch
-cargo test -p kide -p kide-cli   # before a commit: the light suite, a few seconds
+cargo test -p kide -p kide-cli -p kide-git   # before a commit: the light suite, a few seconds
 ./ci.sh              # everything CI runs
 ```
 
@@ -42,7 +42,7 @@ Design documents and plans live in Kota at `shared/kota-development/Kide/`, not
 in this repository. The implemented specification and user documentation remain
 with the code.
 
-One change per commit, with a conventional message (`feat: …`, `fix: …`, `docs: …`). Before committing: `cargo test -p kide -p kide-cli` passes, `cargo clippy -p kide -p kide-cli --all-targets --all-features -- -D warnings` is clean, `cargo fmt` is applied. CI runs the same checks on every pull request.
+One change per commit, with a conventional message (`feat: …`, `fix: …`, `docs: …`). Before committing: `cargo test -p kide -p kide-cli -p kide-git` passes, `cargo clippy -p kide -p kide-cli -p kide-git --all-targets --all-features -- -D warnings` is clean, `cargo fmt` is applied. CI runs the same checks on every pull request.
 
 ## Audit before publishing
 
@@ -109,7 +109,7 @@ Security issues go to the address in [SECURITY.md](SECURITY.md), not to a public
 
 ## Using Kide from another repository
 
-The workspace has three crates under `crates/`: `kide`, `kide-cli` and `kide-web`.
+The workspace has four crates under `crates/`: `kide`, `kide-cli`, `kide-git` and `kide-web`.
 Each carries both license files; keep them when vendoring. The public repository
 starts with the current source tree; earlier development history is retained
 separately.

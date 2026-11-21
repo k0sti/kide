@@ -1,0 +1,17 @@
+[package]
+name = "kide-git"
+version = "0.2.0"
+edition = "2024"
+rust-version = "1.89"
+license = "MIT OR Apache-2.0"
+description = "A Kide folder linked to a Git branch: commits out, upstream changes in"
+repository = "https://github.com/k0sti/kide"
+readme = "README.md"
+keywords = ["sync", "git", "hash-tree"]
+categories = ["filesystem", "development-tools"]
+
+[dependencies]
+kide = { path = "../kide", default-features = false }
+
+[dev-dependencies]
+kide = { path = "../kide", default-features = false, features = ["conformance"] }

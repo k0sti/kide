@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/kide", "crates/kide-cli", "crates/kide-web"]
+members = ["crates/kide", "crates/kide-cli", "crates/kide-git", "crates/kide-web"]
 resolver = "3"
 
 [workspace.package]

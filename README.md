@@ -85,8 +85,8 @@ Plain TCP (`transport = plain`) is unauthenticated and for local testing only.
 ## Build from source and test
 
 ```
-cargo build -p kide -p kide-cli             # the library and the program
-cargo test -p kide -p kide-cli              # the light suite, a few seconds
+cargo build -p kide -p kide-cli -p kide-git # the libraries and the program
+cargo test -p kide -p kide-cli -p kide-git  # the light suite, a few seconds
 ```
 
 The full suite needs the Nix shell: release-mode and heavy tests, clippy for native and `wasm32`, formatting, the Python reference and the browser tests in headless Chromium.
@@ -102,6 +102,7 @@ cd crates/kide && ./ci.sh
 |---|---|
 | `crates/kide/` | The `kide` library, `SPEC.md`, and `reference/kide_ref.py`, the Python reference that generates the spec's test vectors |
 | `crates/kide-cli/` | `kide-cli`: the `kide` program and its daemon |
+| `crates/kide-git/` | `kide-git`: a folder linked to a Git branch (needs the `git` program) |
 | `crates/kide-web/` | `kide-web`: Kide in the browser (WebTransport, OPFS) through wasm-bindgen; browser test support under `tests/` |
 | `crates/kide/examples/` | `two_folders` (library basics) |
 
