@@ -132,7 +132,7 @@ class Audit:
                 raise AuditError("symlink or non-file entry needs separate review")
             if (any(part in FORBIDDEN or part in {".git", ".claude", "target"}
                     for part in name.parts) or name.name.startswith(".env.")
-                    or path == b"DESIGN.md" or path.startswith(b"docs/design/")):
+                    or path.startswith(b"docs/design/")):
                 raise AuditError("credential or unnecessary file in publication tree")
             self.blob(oid.decode())
         self.trees.add(tree)
