@@ -168,6 +168,22 @@ fn prepare(folder: &Folder, ws: &dyn Workspace, from: &str, to: &str) -> Result<
             },
         );
     }
+    // Empty-directory entries stop being live when the move puts content
+    // below them, just as in a scan or reconciliation (§5.1, §5.6).
+    let parents: Vec<_> = next
+        .0
+        .iter()
+        .filter(|(p, e)| {
+            e.kind == Some(crate::format::manifest::Kind::Directory)
+                && to.starts_with(p.as_str())
+                && p.as_str() != to
+        })
+        .map(|(p, e)| (p.clone(), e.version))
+        .collect();
+    for (path, version) in parents {
+        let tomb = store.put(&Record::tombstone(vec![version]).encode()?)?;
+        next.0.insert(path, Entry::tombstone(tomb));
+    }
     let paths = next.0.iter().filter(|(_, e)| e.is_live());
     let (held, _) = crate::names::held(
         paths.map(|(p, e)| (p.as_str(), e.disk.is_some())),

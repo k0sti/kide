@@ -52,6 +52,10 @@ unsuccessfully. Applications use `folder::moves::move_path` and
 `folder::restore::restore_tree`, passing their reviewed current HEAD to restore.
 Format 8 replaces format 7 without migrations; older folders are refused.
 
+Applications: [embedding moves, history and forward undo](EMBEDDING.md) gives the
+exact calls, expected-HEAD checks, disk-layout distinction and error handling,
+plus requirements for application-owned offline format conversion.
+
 ## Configuration
 
 `.kide/config` holds one `key = value` per line; `#` starts a comment.

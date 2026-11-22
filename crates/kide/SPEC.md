@@ -341,6 +341,8 @@ move event. If either input is itself a merge, a single-parent
 continuation of its value (empty change metadata) bridges it first, so no merge
 record is directly a parent of a merge record.
 All source/destination records and descendants publish in one manifest HEAD.
+A tracked empty-directory ancestor of the destination becomes a tombstone after
+its current record when it gains descendants, as in a scan (§5.1, §5.6).
 A durable local move intent contains old/new HEAD, operands and the next index,
 protected together by a SHA-256 checksum;
 it precedes the disk rename. Opening writable finishes an interrupted intent,

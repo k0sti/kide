@@ -9,6 +9,150 @@ fn version(d: &Device, path: &str) -> kide::Hash {
 }
 
 #[test]
+fn moving_into_an_empty_parent_retains_its_directory_history() {
+    use kide::format::manifest::Kind;
+    for (from, to, old_path, new_path) in [
+        ("a", "empty/a", "a", "empty/a"),
+        ("source/", "empty/source/", "source/a", "empty/source/a"),
+    ] {
+        let mut a = Device::new("move-empty-parent");
+        a.write(old_path, b"kept");
+        a.put("empty/", Kind::Directory, b"");
+        a.scan();
+        let earlier = a.folder.head;
+        let directory = version(&a, "empty/");
+        let source = version(&a, old_path);
+        let head = move_path(&mut a.folder, &*a.ws, from, to).unwrap();
+        assert_eq!(a.read(new_path).unwrap(), b"kept");
+        let parent = load::record(&*a.folder.store, &version(&a, "empty/")).unwrap();
+        assert!(parent.is_tombstone());
+        assert_eq!(parent.parents, [directory]);
+        let rows = history(&*a.folder.store, &version(&a, new_path)).unwrap();
+        assert_eq!((rows[0].event, rows[1].id), (Event::Move, source));
+        load::validate_manifest(&*a.folder.store, &head).unwrap();
+        assert_eq!(a.scan().head, head);
+        let report = restore_tree(&mut a.folder, &*a.ws, &earlier, &head).unwrap();
+        assert!(report.skipped.is_empty());
+        assert_eq!(a.read(old_path).unwrap(), b"kept");
+        assert!(a.root().join("empty").read_dir().unwrap().next().is_none());
+        assert_eq!(a.folder.index.0["empty/"].kind, Some(Kind::Directory));
+    }
+}
+
+#[test]
+fn file_move_publishes_both_ends_and_survives_reopen() {
+    let mut a = Device::new("move-file-reopen");
+    a.write("old/a.bin", b"\0\xffbinary");
+    a.scan();
+    let before = a.folder.head;
+    let original = version(&a, "old/a.bin");
+    let value = load::record(&*a.folder.store, &original).unwrap();
+    let mtime = a.folder.index.0["old/a.bin"].mtime;
+    let head = move_path(&mut a.folder, &*a.ws, "old/a.bin", "new/a.bin").unwrap();
+    assert_ne!(head, before);
+    let reader = kide::folder::Folder::open_read_only(a.root()).unwrap();
+    assert_eq!(reader.head, head);
+    let entries = load::validate_manifest(&*reader.store, &head).unwrap();
+    assert_eq!(entries.len(), 2);
+    for path in ["old/a.bin", "new/a.bin"] {
+        let entry = entries.iter().find(|e| e.path == path).unwrap();
+        let rows = history(&*reader.store, &entry.version).unwrap();
+        assert_eq!(rows[0].event, Event::Move);
+        assert_eq!(rows[0].record.parents, [original]);
+        assert_eq!(rows[0].record.is_tombstone(), path == "old/a.bin");
+    }
+    let moved = load::record(&*reader.store, &version(&a, "new/a.bin")).unwrap();
+    assert_eq!(moved.value(), value.value());
+    assert_eq!(reader.index.0["new/a.bin"].mtime, mtime);
+    assert_eq!(a.scan().head, head, "a subsequent scan adds no changes");
+}
+
+#[test]
+fn directory_move_and_restore_preserve_empty_directories_and_file_kinds() {
+    use kide::format::manifest::Kind;
+    let mut a = Device::new("move-kinds");
+    a.put("old/empty/", Kind::Directory, b"");
+    a.put("old/run", Kind::Executable, b"#!/bin/sh\n");
+    #[cfg(unix)]
+    a.put("old/link", Kind::Symlink, b"run");
+    a.scan();
+    let earlier = a.folder.head;
+    let files = a.files();
+    let originals = a.folder.index.clone();
+    move_path(&mut a.folder, &*a.ws, "old/", "new/").unwrap();
+    for (path, original) in &originals.0 {
+        let to = path.replacen("old/", "new/", 1);
+        let entry = a.folder.index.0[&to];
+        assert_eq!(entry.kind, original.kind);
+        let rows = history(&*a.folder.store, &entry.version).unwrap();
+        assert_eq!((rows[0].event, rows[1].id), (Event::Move, original.version));
+    }
+    let expected = a.folder.head;
+    assert!(
+        restore_tree(&mut a.folder, &*a.ws, &earlier, &expected)
+            .unwrap()
+            .skipped
+            .is_empty()
+    );
+    assert_eq!(a.files(), files);
+}
+
+#[test]
+fn a_disk_rename_cannot_be_recorded_as_an_explicit_move_afterwards() {
+    let mut a = Device::new("move-already-on-disk");
+    a.write("old/a", b"kept");
+    a.scan();
+    let original = version(&a, "old/a");
+    let before = a.folder.head;
+    a.ws.rename("old/", "new/").unwrap();
+    assert!(matches!(
+        move_path(&mut a.folder, &*a.ws, "old/", "new/"),
+        Err(kide::Error::Invalid(_))
+    ));
+    assert_eq!(a.folder.head, before);
+    assert_eq!(a.read("new/a").unwrap(), b"kept");
+    a.scan();
+    let old = history(&*a.folder.store, &version(&a, "old/a")).unwrap();
+    assert_eq!((old[0].event, old[1].id), (Event::Delete, original));
+    let new = history(&*a.folder.store, &version(&a, "new/a")).unwrap();
+    assert_eq!(new.len(), 1);
+    assert_eq!(new[0].event, Event::New);
+}
+
+#[test]
+fn relocating_the_workspace_root_keeps_relative_paths_and_history() {
+    use kide::change::Rescan;
+    use kide::conformance::TempDir;
+    use kide::folder::{Folder, scan::scan};
+    use kide::names::Platform;
+    let tmp = TempDir::new("move-workspace-root");
+    let state = tmp.path().join("state");
+    Folder::init(&state).unwrap();
+    let config = state.join(".kide/config");
+    std::fs::write(&config, "folder = ../old\n").unwrap();
+    std::fs::create_dir(tmp.path().join("old")).unwrap();
+    std::fs::write(tmp.path().join("old/a"), b"kept").unwrap();
+    let mut f = Folder::open_unsynced(&state).unwrap();
+    let ws = f.workspace();
+    scan(&mut f, &ws, &mut Rescan, &Platform::current()).unwrap();
+    let head = f.head;
+    let original = f.index.0["a"].version;
+    drop(f);
+    std::fs::rename(tmp.path().join("old"), tmp.path().join("new")).unwrap();
+    std::fs::write(config, "folder = ../new\n").unwrap();
+    let mut f = Folder::open_unsynced(&state).unwrap();
+    let ws = f.workspace();
+    assert_eq!(
+        scan(&mut f, &ws, &mut Rescan, &Platform::current())
+            .unwrap()
+            .head,
+        head
+    );
+    assert_eq!(f.index.0["a"].version, original);
+    assert_eq!(history(&*f.store, &original).unwrap().len(), 1);
+}
+
+#[test]
 fn nested_move_keeps_lineage_and_restores_forward() {
     let mut a = Device::new("move-nested");
     a.write("old/nested/a.txt", b"before\n");
